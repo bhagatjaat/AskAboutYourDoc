@@ -81,8 +81,9 @@ builder.Services.AddSingleton<SupportTools>();
 builder.Services.AddSingleton<SupportAgentFactory>();
 
 const string AngularCors = "angular";
+const string AngularOrigin = "http://localhost:4200";
 builder.Services.AddCors(o => o.AddPolicy(AngularCors, policy => policy
-    .WithOrigins("http://localhost:4200")
+    .WithOrigins(AngularOrigin)
     .AllowAnyHeader()
     .AllowAnyMethod()));
 
@@ -112,10 +113,20 @@ app.MapPost("/api/documents", async (
 
 // ---- File upload: PDF / Word / text. Text backend khud nikalta hai ----
 app.MapPost("/api/documents/upload", async (
+    HttpRequest request,
     IFormFile file,
     IngestionService ingestion,
     CancellationToken ct) =>
 {
+    // JSON POST se pehle browser CORS preflight karta hai, par multipart (file upload)
+    // seedha bhej deta hai. Yani koi bhi website user ke browser se yahan file daal
+    // sakti thi. Sirf apna Angular app, ya bina Origin wale tools (curl, .http) chalenge.
+    var origin = request.Headers.Origin.ToString();
+    if (origin.Length > 0 && origin != AngularOrigin)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
     string text;
     try
     {
@@ -127,11 +138,15 @@ app.MapPost("/api/documents/upload", async (
         return Results.BadRequest(new { error = $"'{file.FileName}' padh nahi paye: {ex.Message}" });
     }
 
-    if (string.IsNullOrWhiteSpace(text))
+    // TextChunker 30 character se chhote chunk phenk deta hai. Koi chunk na bache to
+    // IngestAsync exception (HTTP 500) deta - usse pehle hi saaf message do.
+    if (TextChunker.Chunk(text).Count == 0)
     {
         return Results.BadRequest(new
         {
-            error = $"'{file.FileName}' me koi text nahi mila. Scanned PDF ho to pehle OCR karna padega."
+            error = string.IsNullOrWhiteSpace(text)
+                ? $"'{file.FileName}' me koi padhne layak text nahi mila (scanned PDF ho to pehle OCR karna padega)."
+                : $"'{file.FileName}' me bahut kam text hai - index karne layak kuch nahi mila."
         });
     }
 

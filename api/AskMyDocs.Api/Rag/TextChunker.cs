@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace AskMyDocs.Api.Rag;
 
@@ -91,7 +92,10 @@ public static class TextChunker
 
     private static IEnumerable<string> SplitLongParagraph(string para, int maxChars)
     {
-        var sentences = para.Split(['.', '!', '?', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        // Sentence wahi khatam maano jahan . ! ? ke baad space ho. Har '.' par todne se
+        // "1.5 ghante" -> "1. 5 ghante" aur "e.g." -> "e. g." ho jaata tha.
+        // Punctuation sentence ke saath hi rehta hai, apna "." nahi jodte.
+        var sentences = Regex.Split(para, @"(?<=[.!?])\s+|\n");
         var buffer = new StringBuilder();
 
         foreach (var raw in sentences)
@@ -102,13 +106,13 @@ public static class TextChunker
                 continue;
             }
 
-            if (buffer.Length + sentence.Length + 2 > maxChars && buffer.Length > 0)
+            if (buffer.Length + sentence.Length + 1 > maxChars && buffer.Length > 0)
             {
                 yield return buffer.ToString().Trim();
                 buffer.Clear();
             }
 
-            buffer.Append(sentence).Append(". ");
+            buffer.Append(sentence).Append(' ');
         }
 
         if (buffer.Length > 0)

@@ -68,12 +68,29 @@ export class App {
         text: `"${result.fileName}" index ho gaya - ${result.chunkCount} chunks bane. Ab isse sawal pooch sakte ho.`
       }]);
     } catch (e) {
-      // Backend 400 par { error: "..." } bhejta hai (jaise scanned PDF) - wahi dikhao.
-      const message = e instanceof HttpErrorResponse ? e.error?.error ?? e.message : (e as Error).message;
-      this.error.set(`Upload fail: ${message}`);
+      this.error.set(`Upload fail: ${this.uploadErrorMessage(e)}`);
     } finally {
       this.busy.set(false);
       input.value = '';
+    }
+  }
+
+  /** Upload error ko aisi line me badlo jo user samajh sake ("0 undefined" nahi). */
+  private uploadErrorMessage(e: unknown): string {
+    if (!(e instanceof HttpErrorResponse)) {
+      return e instanceof Error ? e.message : String(e);
+    }
+
+    // Backend 400 par { error: "..." } bhejta hai (jaise scanned PDF) - wahi dikhao.
+    if (typeof e.error?.error === 'string') {
+      return e.error.error;
+    }
+
+    switch (e.status) {
+      case 0: return 'API se connect nahi ho pa raha. Kya backend chal raha hai (port 5080)?';
+      case 403: return 'Server ne upload mana kar diya - sirf localhost:4200 wala app upload kar sakta hai.';
+      case 413: return 'File bahut badi hai - server ~28 MB tak ki file leta hai.';
+      default: return `Server error (HTTP ${e.status})`;
     }
   }
 
