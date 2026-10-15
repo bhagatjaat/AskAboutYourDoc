@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AskMyDocsService } from './askmydocs.service';
@@ -47,7 +48,7 @@ export class App {
     }
   }
 
-  /** File chuno -> text padho -> backend ko bhejo. */
+  /** File chuno -> backend ko bhejo (PDF/Word se text wahi nikalta hai). */
   async onFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -59,8 +60,7 @@ export class App {
     this.error.set(null);
 
     try {
-      const content = await file.text();
-      const result = await this.api.uploadDocument(file.name, content);
+      const result = await this.api.uploadDocument(file);
       await this.refreshDocuments();
 
       this.turns.update(t => [...t, {
@@ -68,7 +68,9 @@ export class App {
         text: `"${result.fileName}" index ho gaya - ${result.chunkCount} chunks bane. Ab isse sawal pooch sakte ho.`
       }]);
     } catch (e) {
-      this.error.set(`Upload fail: ${(e as Error).message}`);
+      // Backend 400 par { error: "..." } bhejta hai (jaise scanned PDF) - wahi dikhao.
+      const message = e instanceof HttpErrorResponse ? e.error?.error ?? e.message : (e as Error).message;
+      this.error.set(`Upload fail: ${message}`);
     } finally {
       this.busy.set(false);
       input.value = '';

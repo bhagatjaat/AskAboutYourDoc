@@ -12,6 +12,16 @@ Content-Type: application/json
   "content": "P1 ticket ka resolution SLA 4 ghante hai.\n\nP2 ka 8 ghante, P3 ka 24 ghante aur P4 ka 72 ghante hai.\n\nAgar koi ticket 3 working days tak Awaiting User state me rehta hai to system use apne aap Closed kar deta hai."
 }
 
+### File upload - PDF / Word (.docx) / text. Text backend khud nikalta hai.
+POST {{host}}/api/documents/upload
+Content-Type: multipart/form-data; boundary=AskMyDocsBoundary
+
+--AskMyDocsBoundary
+Content-Disposition: form-data; name="file"; filename="itsm-policy.md"
+
+< ../../sample-docs/itsm-policy.md
+--AskMyDocsBoundary--
+
 ### Indexed documents ki list
 GET {{host}}/api/documents
 

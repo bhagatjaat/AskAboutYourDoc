@@ -126,6 +126,7 @@ API restart karo. **Baaki ek line code nahi badla** - yahi
 |---|---|---|
 | GET | `/health` | Config check - kaunsa store aur model chal raha hai |
 | POST | `/api/documents` | Document ingest: chunk -> embed -> store |
+| POST | `/api/documents/upload` | File upload (.pdf / .docx / .txt / .md): text nikalo -> chunk -> embed -> store |
 | GET | `/api/documents` | Indexed documents ki list |
 | POST | `/api/ask` | Plain RAG: retrieve + generate + citations |
 | POST | `/api/agent/ask` | Agent: tools + session memory |

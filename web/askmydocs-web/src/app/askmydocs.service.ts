@@ -11,10 +11,15 @@ const API = 'http://localhost:5080';
 export class AskMyDocsService {
   private readonly http = inject(HttpClient);
 
-  /** Document upload - Indexing pipeline trigger hoti hai. */
-  uploadDocument(fileName: string, content: string): Promise<IngestResponse> {
+  /**
+   * Document upload - Indexing pipeline trigger hoti hai.
+   * File jaisi hai waisi jaati hai; PDF/Word se text backend nikalta hai.
+   */
+  uploadDocument(file: File): Promise<IngestResponse> {
+    const form = new FormData();
+    form.append('file', file);
     return firstValueFrom(
-      this.http.post<IngestResponse>(`${API}/api/documents`, { fileName, content })
+      this.http.post<IngestResponse>(`${API}/api/documents/upload`, form)
     );
   }
 

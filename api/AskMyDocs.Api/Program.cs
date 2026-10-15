@@ -110,6 +110,36 @@ app.MapPost("/api/documents", async (
     return Results.Ok(result);
 });
 
+// ---- File upload: PDF / Word / text. Text backend khud nikalta hai ----
+app.MapPost("/api/documents/upload", async (
+    IFormFile file,
+    IngestionService ingestion,
+    CancellationToken ct) =>
+{
+    string text;
+    try
+    {
+        await using var stream = file.OpenReadStream();
+        text = await DocumentTextExtractor.ExtractAsync(stream, file.FileName, ct);
+    }
+    catch (Exception ex) when (ex is not OperationCanceledException)
+    {
+        return Results.BadRequest(new { error = $"'{file.FileName}' padh nahi paye: {ex.Message}" });
+    }
+
+    if (string.IsNullOrWhiteSpace(text))
+    {
+        return Results.BadRequest(new
+        {
+            error = $"'{file.FileName}' me koi text nahi mila. Scanned PDF ho to pehle OCR karna padega."
+        });
+    }
+
+    var result = await ingestion.IngestAsync(new IngestRequest(file.FileName, text), ct);
+    return Results.Ok(result);
+})
+.DisableAntiforgery();   // cookie-based login nahi hai, isliye antiforgery token ki zaroorat nahi
+
 app.MapGet("/api/documents", (IngestionService ingestion) => Results.Ok(ingestion.List()));
 
 // ---- Plain RAG (koi agent nahi, sirf retrieve + generate) ----
