@@ -1,0 +1,122 @@
+<div class="shell">
+
+  <!-- ================= Sidebar ================= -->
+  <aside class="side">
+    <h1>AskMyDocs</h1>
+    <p class="tag">RAG + Agent demo &middot; .NET 10 + Angular</p>
+
+    <label class="upload">
+      <input type="file" accept=".txt,.md,.json,.csv" (change)="onFileSelected($event)" hidden>
+      <span>+ Document upload karo</span>
+    </label>
+    <p class="hint">.txt / .md file chuno. Upload hote hi chunking + embedding ho jayegi.</p>
+
+    <h2>Indexed documents</h2>
+
+    @if (documents().length === 0) {
+      <p class="empty">Abhi kuch index nahi hua.</p>
+    } @else {
+      <ul class="docs">
+        @for (doc of documents(); track doc.documentId) {
+          <li>
+            <span class="name">{{ doc.fileName }}</span>
+            <span class="chunks">{{ doc.chunkCount }} chunks</span>
+          </li>
+        }
+      </ul>
+      <p class="total">Total {{ totalChunks() }} chunks vector store me</p>
+    }
+
+    <h2>Mode</h2>
+    <div class="modes">
+      <button [class.on]="mode() === 'rag'" (click)="setMode('rag')">
+        <b>Plain RAG</b><small>retrieve + generate, citations ke saath</small>
+      </button>
+      <button [class.on]="mode() === 'agent'" (click)="setMode('agent')">
+        <b>Agent</b><small>tools + memory, ek hi response me</small>
+      </button>
+      <button [class.on]="mode() === 'stream'" (click)="setMode('stream')">
+        <b>Agent + streaming</b><small>token-by-token, live tool calls</small>
+      </button>
+    </div>
+
+    <button class="clear" (click)="clearChat()">Chat saaf karo</button>
+  </aside>
+
+  <!-- ================= Chat ================= -->
+  <main class="chat">
+
+    @if (error(); as err) {
+      <div class="error">{{ err }}</div>
+    }
+
+    <div class="stream-area">
+      @if (turns().length === 0) {
+        <div class="welcome">
+          <h2>Apne documents se baat karo</h2>
+          <p>Pehle left side se ek document upload karo, phir sawal poocho.</p>
+          <div class="samples">
+            @for (s of samples; track s) {
+              <button (click)="useSample(s)">{{ s }}</button>
+            }
+          </div>
+        </div>
+      }
+
+      @for (turn of turns(); track $index) {
+        <div class="turn" [class.user]="turn.role === 'user'">
+          <div class="who">{{ turn.role === 'user' ? 'Tum' : 'AskMyDocs' }}</div>
+
+          <div class="bubble">
+            <span class="text">{{ turn.text }}</span>
+            @if (turn.streaming) {
+              <span class="caret"></span>
+            }
+          </div>
+
+          <!-- Agent ne kaunse tool chalaye -->
+          @if (turn.toolsUsed?.length) {
+            <div class="tools">
+              @for (tool of turn.toolsUsed; track tool) {
+                <span class="tool">{{ tool }}</span>
+              }
+            </div>
+          }
+
+          <!-- RAG citations: bina inke jawab par bharosa mat karo -->
+          @if (turn.sources?.length) {
+            <div class="sources">
+              <div class="sources-title">Jawab in chunks se bana:</div>
+              @for (src of turn.sources; track src.marker) {
+                <div class="src">
+                  <span class="marker">[{{ src.marker }}]</span>
+                  <span class="file">{{ src.fileName }} &middot; chunk {{ src.chunkIndex }}</span>
+                  <span class="score">score {{ src.score }}</span>
+                  <p class="snippet">{{ src.snippet }}</p>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      @if (activeTool(); as tool) {
+        <div class="running">Tool is running...: <b>{{ tool }}</b></div>
+      }
+    </div>
+
+    <form class="composer" (ngSubmit)="send()">
+      <input
+        type="text"
+        [ngModel]="question()"
+        (ngModelChange)="question.set($event)"
+        name="q"
+        placeholder="Apne documents se kuch bhi poocho..."
+        [disabled]="busy()"
+        autocomplete="off">
+      <button type="submit" [disabled]="!canSend()">
+        {{ busy() ? '...' : 'send' }}
+      </button>
+    </form>
+  </main>
+</div>

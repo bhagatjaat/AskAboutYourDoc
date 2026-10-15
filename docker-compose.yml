@@ -1,0 +1,21 @@
+# Qdrant ko local me chalane ke liye.
+#
+#   docker compose up -d
+#   http://localhost:6333/dashboard   <- browser me kholo, vectors dikhte hain
+#
+# Phir api/AskMyDocs.Api/appsettings.json me "VectorStore:Kind" ko
+# "InMemory" se "Qdrant" kar do. Baaki koi code nahi badalna.
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: askmydocs-qdrant
+    ports:
+      - "6333:6333"   # REST API + dashboard
+      - "6334:6334"   # gRPC - .NET client yahi use karta hai
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+volumes:
+  qdrant_data:

@@ -1,0 +1,49 @@
+@host = http://localhost:5080
+
+### Health check - sabse pehle ye chalao
+GET {{host}}/health
+
+### Document upload (Indexing phase)
+POST {{host}}/api/documents
+Content-Type: application/json
+
+{
+  "fileName": "itsm-policy.md",
+  "content": "P1 ticket ka resolution SLA 4 ghante hai.\n\nP2 ka 8 ghante, P3 ka 24 ghante aur P4 ka 72 ghante hai.\n\nAgar koi ticket 3 working days tak Awaiting User state me rehta hai to system use apne aap Closed kar deta hai."
+}
+
+### Indexed documents ki list
+GET {{host}}/api/documents
+
+### Plain RAG - retrieve + generate, citations ke saath
+POST {{host}}/api/ask
+Content-Type: application/json
+
+{
+  "question": "P1 ticket ka SLA kitne ghante ka hai?"
+}
+
+### Agent - tools chalega (search_documents / get_ticket_status)
+POST {{host}}/api/agent/ask
+Content-Type: application/json
+
+{
+  "question": "INC-1001 ka status batao aur uski priority ka SLA bhi"
+}
+
+### Agent + memory - upar wale response ka sessionId yahan daalo
+POST {{host}}/api/agent/ask
+Content-Type: application/json
+
+{
+  "question": "aur uska owner kaun hai?",
+  "sessionId": "PASTE_SESSION_ID_HERE"
+}
+
+### Agent streaming (SSE) - token-by-token aayega
+POST {{host}}/api/agent/stream
+Content-Type: application/json
+
+{
+  "question": "Leave apply karne ka process kya hai?"
+}
