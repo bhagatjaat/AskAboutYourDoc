@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+using AskMyDocs.Api.Data;
 using AskMyDocs.Api.Models;
 using Microsoft.Extensions.VectorData;
 
@@ -15,11 +15,9 @@ namespace AskMyDocs.Api.Rag;
 /// </summary>
 public sealed class IngestionService(
     VectorStoreCollection<Guid, DocChunk> collection,
+    IDocumentCatalog catalog,
     ILogger<IngestionService> logger)
 {
-    // Asli production me ye SQL table hoti. Seekhne ke liye in-memory list kaafi hai.
-    private static readonly ConcurrentDictionary<string, DocumentSummary> Catalog = new();
-
     public async Task<IngestResponse> IngestAsync(IngestRequest request, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Content);
@@ -49,7 +47,7 @@ public sealed class IngestionService(
         await collection.UpsertAsync(records, ct);
 
         var summary = new DocumentSummary(documentId, request.FileName, pieces.Count, DateTimeOffset.UtcNow);
-        Catalog[documentId] = summary;
+        await catalog.AddAsync(summary, ct);
 
         logger.LogInformation(
             "Ingested {FileName} as {DocumentId} with {ChunkCount} chunks",
@@ -58,6 +56,6 @@ public sealed class IngestionService(
         return new IngestResponse(documentId, request.FileName, pieces.Count);
     }
 
-    public IReadOnlyList<DocumentSummary> List()
-        => Catalog.Values.OrderByDescending(d => d.UploadedAt).ToList();
+    public Task<IReadOnlyList<DocumentSummary>> ListAsync(CancellationToken ct = default)
+        => catalog.ListAsync(ct);
 }

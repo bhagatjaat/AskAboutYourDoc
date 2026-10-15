@@ -1,6 +1,7 @@
 using System.ClientModel;
 using System.Text.Json;
 using AskMyDocs.Api.Agents;
+using AskMyDocs.Api.Data;
 using AskMyDocs.Api.Models;
 using AskMyDocs.Api.Rag;
 using CommunityToolkit.VectorData.InMemory;
@@ -25,6 +26,9 @@ var storeKind = vectorCfg["Kind"] ?? "InMemory";
 var collectionName = vectorCfg["Collection"] ?? "askmydocs";
 var qdrantHost = vectorCfg["QdrantHost"] ?? "localhost";
 var qdrantPort = int.TryParse(vectorCfg["QdrantPort"], out var parsedPort) ? parsedPort : 6334;
+
+var catalogKind = builder.Configuration["Catalog:Kind"] ?? "InMemory";
+var mySqlConnectionString = builder.Configuration.GetConnectionString("MySql");
 // ---------------------------------------------------------------------------
 // 2. LLM clients
 //
@@ -73,7 +77,29 @@ builder.Services.AddSingleton<VectorStoreCollection<Guid, DocChunk>>(sp =>
 });
 
 // ---------------------------------------------------------------------------
-// 4. Hamari apni services
+// 4. Document catalog (uploaded files ki list)
+//
+// Vectors Qdrant me, aur ye normal metadata MySQL me. Connection string me password
+// hai, isliye wo appsettings.json (GitHub par jaati hai) me nahi, user-secrets me hai.
+// ---------------------------------------------------------------------------
+if (catalogKind.Equals("MySql", StringComparison.OrdinalIgnoreCase))
+{
+    if (string.IsNullOrWhiteSpace(mySqlConnectionString))
+    {
+        throw new InvalidOperationException(
+            "Catalog:Kind = MySql hai par ConnectionStrings:MySql nahi mila. " +
+            "api/AskMyDocs.Api me chalao: dotnet user-secrets set \"ConnectionStrings:MySql\" \"Server=localhost;Port=3306;Database=askmydocs;User ID=askmydocs;Password=...\"");
+    }
+
+    builder.Services.AddSingleton<IDocumentCatalog>(new MySqlDocumentCatalog(mySqlConnectionString));
+}
+else
+{
+    builder.Services.AddSingleton<IDocumentCatalog, InMemoryDocumentCatalog>();
+}
+
+// ---------------------------------------------------------------------------
+// 5. Hamari apni services
 // ---------------------------------------------------------------------------
 builder.Services.AddSingleton<IngestionService>();
 builder.Services.AddSingleton<RagService>();
@@ -91,7 +117,7 @@ var app = builder.Build();
 app.UseCors(AngularCors);
 
 // ---------------------------------------------------------------------------
-// 5. Endpoints
+// 6. Endpoints
 // ---------------------------------------------------------------------------
 app.MapGet("/health", () => Results.Ok(new
 {
@@ -155,7 +181,8 @@ app.MapPost("/api/documents/upload", async (
 })
 .DisableAntiforgery();   // cookie-based login nahi hai, isliye antiforgery token ki zaroorat nahi
 
-app.MapGet("/api/documents", (IngestionService ingestion) => Results.Ok(ingestion.List()));
+app.MapGet("/api/documents", async (IngestionService ingestion, CancellationToken ct) =>
+    Results.Ok(await ingestion.ListAsync(ct)));
 
 // ---- Plain RAG (koi agent nahi, sirf retrieve + generate) ----
 app.MapPost("/api/ask", async (AskRequest request, RagService rag, CancellationToken ct) =>

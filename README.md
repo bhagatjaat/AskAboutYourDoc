@@ -120,7 +120,26 @@ API restart karo. **Baaki ek line code nahi badla** - yahi
 
 ---
 
-## 5. API endpoints
+## 5. Documents ki list MySQL me
+
+Vectors Qdrant me rehte hain, par uploaded documents ki list (naam, chunks, time)
+normal data hai - wo MySQL ki `documents` table me jaati hai.
+
+```bash
+# 1. Database, user aur table banao (root password maangega)
+mysql -u root -p < db/mysql-init.sql
+
+# 2. Connection string user-secrets me rakho - appsettings.json GitHub par jaati hai
+cd api/AskMyDocs.Api
+dotnet user-secrets set "ConnectionStrings:MySql" "Server=localhost;Port=3306;Database=askmydocs;User ID=askmydocs;Password=askmydocs_pass"
+```
+
+`appsettings.json` me `"Catalog": { "Kind": "MySql" }` hai. Bina MySQL ke chalana ho
+to `"InMemory"` kar do.
+
+---
+
+## 6. API endpoints
 
 | Method | Route | Kya karta hai |
 |---|---|---|
@@ -136,7 +155,7 @@ API restart karo. **Baaki ek line code nahi badla** - yahi
 
 ---
 
-## 6. Package versions (7 Oct 2026)
+## 7. Package versions (7 Oct 2026)
 
 | Package | Version | Kaam |
 |---|---|---|
@@ -146,6 +165,7 @@ API restart karo. **Baaki ek line code nahi badla** - yahi
 | `Microsoft.Extensions.VectorData.Abstractions` | 10.10.0 | `VectorStoreCollection<,>` |
 | `CommunityToolkit.VectorData.InMemory` | 1.0.1 | In-memory vector store |
 | `CommunityToolkit.VectorData.Qdrant` | 1.0.0 | Qdrant connector |
+| `MySqlConnector` | 2.6.2 | Documents catalog (MySQL) |
 | `Microsoft.SemanticKernel` | 1.81.0 | Sirf Lab 5 ke liye |
 
 > Vector store connectors pehle `Microsoft.SemanticKernel.Connectors.*` me the.
